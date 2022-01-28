@@ -187,14 +187,17 @@ class SdsFiller(object):
         """
         self.files_copied = []
         for st_file in self.files_not_in_main_sds:
-            dist_path = self._get_file_path_in_main_sds(st_file)
-            dist_path_list = dist_path.split('.')[:-1]
-            if not os.path.exists(dist_path):
-                create_dir('.'+dist_path_list[1]+'.D')
-                shutil.copy(st_file['abs_path'], dist_path)
-                self.files_copied.append(st_file)
-            else :
-                print("The file %s already exist: Copy canceled " % dist_path)
+            try :
+                dist_path = self._get_file_path_in_main_sds(st_file)
+                #dist_path_list = dist_path.split('.')[:-1]
+                if not os.path.exists(dist_path):
+                    create_dir(dist_path[:-len(st_file['name'])])
+                    shutil.copy(st_file['abs_path'], dist_path)
+                    self.files_copied.append(st_file)
+                else :
+                    print("The file %s already exist: Copy canceled " % dist_path)
+            except:
+                print("Error during copy : %s" % st_file['name'])
         self._write_report("files_copied")
 
     def merge_file_in_both_sds(self) -> None:
@@ -241,5 +244,22 @@ class SdsFiller(object):
                 self.files_merged_failed.append(st_file)
         self._write_report("files_merged")
         self._write_report("files_merged_failed")
+
+    def get_reports(self) -> dict:
+        """To get report
+
+        Returns:
+            dict: return all report
+        """
+        report = {
+            "files_in_another_sds": self.files_in_another_sds,             # ALL FILES IN SDS SRC
+            "files_already_in_main_sds": self.files_already_in_main_sds,   # FILES ALREADY IN MAIN SDS
+            "files_not_in_main_sds": self.files_not_in_main_sds,           # FILES NOT IN MAIN SDS
+            "files_in_both_with_diff": self.files_in_both_with_diff,       # FILES IN BOTH SDS WITH DIFF
+            "files_copied": self.files_copied,                             # FILES COPIED IN MAIN SDS
+            "files_merged": self.files_merged,                             # FILES MERGED IN MAIN SDS
+            "files_merged_failed": self.files_merged_failed              # MERGED FILES THAT FAILED
+        }
+        return report
 
 

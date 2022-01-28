@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import re
 import os
 import json
 import fnmatch
@@ -34,21 +35,33 @@ def scan_dir(directory: str) -> dict:
     """
     file_in_dir = {}
     for path in Path(directory).rglob('*.*.*.*.*.*.*'):
-        stat_file = os.stat(path.absolute())
-        infos = path.name.split('.')
-        file_in_dir[path.name] = {'name': path.name,
-                                  'abs_path': str(path.absolute()),
-                                  'size': stat_file.st_size,
-                                  'last_m': stat_file.st_mtime,
-                                  'info' : {'network' : infos[0],
-                                            'station' : infos[1],
-                                            'location': infos[2],
-                                            'channel' : infos[3],
-                                            'quality' : infos[4],
-                                            'year'    : infos[5],
-                                            'day'     : infos[6]}
-                                  }
+        if test_name_format(path):
+            stat_file = os.stat(path.absolute())
+            infos = path.name.split('.')
+            file_in_dir[path.name] = {'name': path.name,
+                                      'abs_path': str(path.absolute()),
+                                      'size': stat_file.st_size,
+                                      'last_m': stat_file.st_mtime,
+                                      'info' : {'network' : infos[0],
+                                                'station' : infos[1],
+                                                'location': infos[2],
+                                                'channel' : infos[3],
+                                                'quality' : infos[4],
+                                                'year'    : infos[5],
+                                                'day'     : infos[6]}
+                                      }
     return file_in_dir
+
+
+def test_name_format(path):
+    """
+    To test if the name has a good format
+    """
+    # TODO faire un unitest
+    match = re.search(
+        r"[A-Z0-9]{1,2}\.[A-Z0-9]{1,5}\.[0-9]{0,2}\.[A-Z0-9]{1,3}\.[A-Z]{1}\.[0-9]{4}\.[0-9]{1,3}",
+        path.name)
+    return match
 
 
 def write_json(data, filename: str) -> None:
