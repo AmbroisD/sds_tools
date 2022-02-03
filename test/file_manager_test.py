@@ -1,7 +1,11 @@
 import unittest
-from utils.file_manager import test_name_format
+from utils.file_manager import test_name_format, in_white_list
 
 class TestStringMethods(unittest.TestCase):
+
+    def test_white_list(self):
+        in_white_list()
+
 
     def test_re_test_name(self):
         class myPath:

@@ -5,6 +5,12 @@ Le programme utisera lesrésultats du scan de gaps et de la base pheonix pour co
 ##TODO feature : pouvoir utiliser un station xml
 ##FIXME
 ##BUG
+On initialise la class
+meta = Metadata(net, sta, loc, channel)
+if meta.exist():
+else:
+
+
 """
 class MetaData(object):
     """
@@ -29,7 +35,7 @@ class MetaData(object):
         self.error = dict()
         pass
 
-    def retrive_station_info(self) -> None:
+    def retrieve_station_info(self) -> None:
         pass
 
     def _test_net(self) -> None:
