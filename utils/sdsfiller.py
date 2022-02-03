@@ -267,4 +267,21 @@ class SdsFiller(object):
             self._write_report("files_merged")
             self._write_report("files_merged_failed")
 
+    def get_reports(self) -> dict:
+        """To get report
+
+        Returns:
+            dict: return all report
+        """
+        report = {
+            "files_in_another_sds": self.files_in_another_sds,             # ALL FILES IN SDS SRC
+            "files_already_in_main_sds": self.files_already_in_main_sds,   # FILES ALREADY IN MAIN SDS
+            "files_not_in_main_sds": self.files_not_in_main_sds,           # FILES NOT IN MAIN SDS
+            "files_in_both_with_diff": self.files_in_both_with_diff,       # FILES IN BOTH SDS WITH DIFF
+            "files_copied": self.files_copied,                             # FILES COPIED IN MAIN SDS
+            "files_merged": self.files_merged,                             # FILES MERGED IN MAIN SDS
+            "files_merged_failed": self.files_merged_failed              # MERGED FILES THAT FAILED
+        }
+        return report
+
 

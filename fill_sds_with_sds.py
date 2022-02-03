@@ -22,7 +22,7 @@ def main():
 
     parser.add_argument('-c', "--config", default="config.ini",
                         help='Set configuration file')
-    parser.add_argument('-y', "--year", help='Set year')
+    parser.add_argument('-r', "--report", help='Print resume of report')
     parser.add_argument('-p', '--program', default="file-analyse",
                         help='The path of file-analyze')
     parser.add_argument('-a', "--auto", action="store_true", default=False,
