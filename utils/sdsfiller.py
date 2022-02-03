@@ -187,14 +187,20 @@ class SdsFiller(object):
         """
         self.files_copied = []
         for st_file in self.files_not_in_main_sds:
-            dist_path = self._get_file_path_in_main_sds(st_file)
-            dist_path_list = dist_path.split('.')[:-1]
-            if not os.path.exists(dist_path):
-                create_dir('.'+dist_path_list[1]+'.D')
-                shutil.copy(st_file['abs_path'], dist_path)
-                self.files_copied.append(st_file)
-            else :
-                print("The file %s already exist: Copy canceled " % dist_path)
+            try:
+                dist_path = self._get_file_path_in_main_sds(st_file)
+                if not os.path.exists(dist_path):
+                    if self.verbose > 1: 
+                        print("Create rep : %s" % dist_path[:-len(st_file['name'])])
+                    create_dir(dist_path[:-len(st_file['name'])])
+                    shutil.copy(st_file['abs_path'], dist_path)
+                    self.files_copied.append(st_file)
+                    if self.verbose > 0:
+                        print("File: %s copied" % st_file['name'])
+                else :
+                    print("The file %s already exist: Copy canceled " % dist_path)
+            except:
+                print("Error during copy : %s" % st_file['name']) 
         self._write_report("files_copied")
 
     def merge_file_in_both_sds(self) -> None:
@@ -202,44 +208,63 @@ class SdsFiller(object):
         To merge when there are mseed file in both sds
 
         """
+        print("Merging starting")
         self.files_merged = []
         self.files_merged_failed = []
-        st = Stream()
         for st_file in self.files_in_both_with_diff:
-            dist_path = self._get_file_path_in_main_sds(st_file)
-            mseed_src = read(st_file['abs_path'])
-            mseed_sds = read(dist_path)
-            st += mseed_src
-            st += mseed_sds
-            st.merge(-1)
-            if len(st) == 1:
-                save_path = os.path.join(self.save_merged_file_path, st_file['name'])
-                shutil.move(dist_path, save_path)
-                st_file['merge'] = {'old_file': save_path,
-                                    'merge_time': str(datetime.utcnow()),
-                                    'after':{'gap': str(st.get_gaps()),
-                                             'start': str(st[0].stats['starttime']),
-                                             'end': str(st[0].stats['endtime'])},
-                                    'before': {'gap_src': str(mseed_src.get_gaps()),
-                                               'start_src': str(mseed_src[0].stats['starttime']),
-                                               'end_src': str(mseed_src[0].stats['endtime']),
-                                               'gap_sds': str(mseed_sds.get_gaps()),
-                                               'start_sds': str(mseed_sds[0].stats['starttime']),
-                                               'end_sds': str(mseed_sds[0].stats['endtime'])}}
-                st.write(dist_path, format="MSEED", reclen=512)
-                self.files_merged.append(st_file)
-            else:
-                st_file['merge_fail'] = {'fail_time': str(datetime.utcnow()),
-                                         'before': {'src': str(mseed_src.get_gaps()),
-                                                    'start_src': str(mseed_src[0].stats['starttime']),
-                                                    'end_src': str(mseed_sds[0].stats['starttime']),
-                                                    'sds': str(mseed_sds.get_gaps()),
-                                                    'start_sds': str(mseed_sds[0].stats['starttime']),
-                                                    'end_sds': str(mseed_sds[0].stats['endtime'])
-                                                    },
-                                         'len_after_merge' : len(st)}
-                self.files_merged_failed.append(st_file)
-        self._write_report("files_merged")
-        self._write_report("files_merged_failed")
+            try:
+                st = Stream()
+                overlap = False
+                dist_path = self._get_file_path_in_main_sds(st_file)
+                mseed_src = read(st_file['abs_path'])
+                mseed_sds = read(dist_path)
+                st += mseed_src
+                st += mseed_sds
+                st.merge(-1)
+                gaps = st.get_gaps(min_gap=1)
+                print("%s len = %s" % (st_file["name"], len(st)))
+                for gap in gaps:
+                    if gap[6] < 0:
+                        overlap = True
+                        break
+                if not overlap:
+                    print("Merge success")
+                    save_path = os.path.join(self.save_merged_file_path, st_file['name'])
+                    shutil.move(dist_path, save_path)
+                    st_file['merge'] = {'old_file': save_path,
+                                        'merge_time': str(datetime.utcnow()),
+                                        'after':{'gap': str(gaps),
+                                                 'start': str(st[0].stats['starttime']),
+                                                 'end': str(st[0].stats['endtime'])},
+                                        'before': {'gap_src': str(mseed_src.get_gaps(min_gap=1)),
+                                                   'start_src': str(mseed_src[0].stats['starttime']),
+                                                   'end_src': str(mseed_src[0].stats['endtime']),
+                                                   'gap_sds': str(mseed_sds.get_gaps(min_gap=1)),
+                                                   'start_sds': str(mseed_sds[0].stats['starttime']),
+                                                   'end_sds': str(mseed_sds[0].stats['endtime'])}}
+                
+                    if not os.path.exists(dist_path):
+                        st.write(dist_path, format="MSEED", reclen=512)
+                        self.files_merged.append(st_file)
+                    else:
+                        st_file['merge_fail'] = {'fail_comment': 'file already exist'}
+                        self.files_merged_failed.append(st_file)
+                else:
+                    print("Merge failled")
+                    st_file['merge_fail'] = {'fail_time': str(datetime.utcnow()),
+                                         #    'before': {'src': str(mseed_src.get_gaps()),
+                                         #              'start_src': str(mseed_src[0].stats['starttime']),
+                                         #               'end_src': str(mseed_sds[0].stats['starttime']),
+                                         #               'sds': str(mseed_sds.get_gaps()),
+                                         #               'start_sds': str(mseed_sds[0].stats['starttime']),
+                                         #               'end_sds': str(mseed_sds[0].stats['endtime'])
+                                         #               },
+                                             'len_after_merge' : len(st)}
+                    self.files_merged_failed.append(st_file)
+            except:
+                print("Error during merge : %s" % st_file['name'])
+            print("Merge finished")
+            self._write_report("files_merged")
+            self._write_report("files_merged_failed")
 
 
