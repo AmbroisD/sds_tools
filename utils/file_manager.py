@@ -4,38 +4,42 @@ import os
 import json
 import fnmatch
 from pathlib import Path
+from typing import Union
 
 
-def get_list_file(patern, directory: str) -> list:
-    """To get file list with the good patern in the directory
+def get_list_file(pattern, directory: str) -> list:
+    """To get file list with the good pattern in the directory
 
     Args:
-        patern ([str]): Set patern filter (ex : '*.py', '????.??.txt')
+        pattern ([str]): Set pattern filter (ex : '*.py', '????.??.txt')
         directory ([str]): Set search directory
     Returns:
         [list]: return the files that match the pattern
     """
-    files = fnmatch.filter(os.listdir(directory), patern)
+    files = fnmatch.filter(os.listdir(directory), pattern)
     return files
 
 
-def scan_dir(directory: str) -> dict:
+def scan_dir(directory: str,
+             net: str ='*', sta: str ='*',
+             loc: str ='*', cha: str ='*',
+             start: str = None, end : str = None) -> dict:
     """To get dict for each file in the sds
        - name file is the key
-       Inforations for each files is:
+       Information for each files is:
            - the name
            - absolute path
            - size
            - last modification
 
-    Args:
-        directory ([str]): Set search directory
-    Returns:
-        [dict]: return dict with files that match the pattern
+    :param dir: Set search directory
+    :type dir: str
+    :return: return dict with files that match the pattern
+    :rtype: dict
     """
     file_in_dir = {}
     for path in Path(directory).rglob('*.*.*.*.*.*.*'):
-        if test_name_format(path) and in_white_list(path):
+        if test_mseed_sds_name_format(path) and in_white_list(path):
             stat_file = os.stat(path.absolute())
             infos = path.name.split('.')
             file_in_dir[path.name] = {'name': path.name,
@@ -54,9 +58,10 @@ def scan_dir(directory: str) -> dict:
 
 
 def check_pattern(str_to_test, pattern):
+    # TODO finir
     if pattern == "*":
         return True
-    elif pattern:
+    #elif pattern:
     else:
         return False
     #pattern = r"ojhiu."
@@ -70,6 +75,7 @@ def get_infos_with_name(path):
     list_infos = path.name.split('.')
     return list_infos[0], list_infos[1], list_infos[2], list_infos[3], list_infos[5], list_infos[6]
 
+
 def in_white_list(path, net_pattern='*', station_pattern='*', location_pattern='*', channel_pattern='*', pattern_year='*'):
     # TODO finir
     network, station, location, channel, year = get_infos_with_name(path)
@@ -81,7 +87,8 @@ def in_white_list(path, net_pattern='*', station_pattern='*', location_pattern='
     else:
         return False
 
-def test_name_format(path):
+
+def test_mseed_sds_name_format(path: str):
     """
     To test if the name has a good format
     """
@@ -102,7 +109,7 @@ def write_json(data, filename: str) -> None:
         outfile.write(json.dumps(data, indent=4))
 
 
-def load_json(json_filename):
+def load_json(json_filename: str) -> Union[list, dict]:
     """
     Load a JSON from a given filename
 
@@ -114,12 +121,36 @@ def load_json(json_filename):
     return result
 
 
-def create_dir(new_path):
+def create_dir(new_dir_path: str) -> str:
     """Takes the path as input and creates all missing directories in the path,
        including the parent directory
-    Args:
-        new_path ([type]): [description]
+
+    :param new_path: set new path
+    :type new_path: str
     """
-    path = Path(new_path)
+    path = Path(new_dir_path)
     path.mkdir(parents=True, exist_ok=True)
 
+
+def get_parents_path(path: str) -> str:
+    """Get parents path
+
+    :param path: set path of file
+    :type path: str
+    :return: return parent path
+    :rtype: str
+    """
+    current_path = Path(path)
+    return str(current_path.parents[0])
+
+
+def create_parent_dir(new_file_path: str) -> str:
+    """Takes the file path as input and creates all missing directories in the path,
+       including the parent directory
+
+    :param new_path: set new path
+    :type new_path: str
+    """
+    parents_path = get_parents_path(new_file_path)
+    path = Path(parents_path)
+    path.mkdir(parents=True, exist_ok=True)
