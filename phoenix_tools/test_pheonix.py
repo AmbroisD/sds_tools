@@ -3,7 +3,7 @@ sys.path.insert(0, '/u/leros/SISMO/PRETRAITEMENT/David/abstractdb')
 sys.path.insert(0, '/u/leros/SISMO/PRETRAITEMENT/David/pygraph')
 
 from oca.database.abstractdb import DatabaseObjectFactory
-from phoenix.check_metadata import MetaDataCheck 
+from phoenix_tools.check_metadata import MetaDataCheck
 
 HOST = 'babel.unice.fr'
 USER = 'sysop'
