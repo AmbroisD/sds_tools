@@ -21,30 +21,36 @@ def get_list_file(pattern, directory: str) -> list:
     return files
 
 
-def check_dates_window(current_time: str, start: str, end: str, format: str = '%Y.%j') -> bool:
+def check_dates_window(current_time: str, start: str, end: str, format: str = '%Y-%M-%d',
+                       min_date: str = '1971-01-01',  max_date: str = '2099-01-01') -> bool:
     """Checks if the time is between start and end
-       Put '' if no start or end date
+       Put '' if no start or end date , it will be replaced by min_date and max_date
+       
     :param current_time: set the time to test
     :type current_time: str
     :param start: set the start time
     :type start: str
     :param end: set the end time
     :type end: str
-    :param format: the format of the time, defaults to '%Y.%j'
+    :param format: the format of the time, defaults to %Y-%M-%d'
     :type format: str, optional
+    :param min_date: Set the min date, defaults to 1971-01-01'
+    :type min_date: str, optional
+    :param max_date: Set the max date, defaults to 2099-01-01'
+    :type max_date: str, optional
     :return: return true if the current time is between start and end
     :rtype: bool
     """
     if start == '':
-        t_start = datetime.strptime('1971.001', format)
+        t_start = datetime.strptime(min_date, format)
     else:
         t_start = datetime.strptime(start, format)
     if end == '':
-        t_end = datetime.strptime('2099.001', format)
+        t_end = datetime.strptime(max_date, format)
     else:
         t_end = datetime.strptime(end, format)
 
-    t_current = datetime.strptime(current_time, format)
+    t_current = datetime.strptime(current_time, '%Y.%j')
     return t_start <= t_current <= t_end
 
 

@@ -16,16 +16,15 @@ import argparse
 import subprocess
 from pathlib import Path
 from os.path import relpath
-from utils.file_manager import load_json
-from utils.file_manager import create_dir
-from utils.file_manager import check_dates_window
-from utils.file_manager import scan_dir
-from utils.file_manager import test_channel_format, test_location_format, test_network_format, test_station_format
+from typing import Any, Dict
+from utils.file_manager import load_json, create_dir, check_dates_window, scan_dir
+from utils.file_manager import test_channel_format, test_location_format,\
+                               test_network_format, test_station_format
 #from ..utils.file_manager import test_mseed_sds_name_format
 # ---------------------------------------------------------------------------
 
 GSMOD_PATH = "/Users/ambrois/Documents/01_Scripts/slinkgo/gmsmod"
-
+MAXDATES = "2022-01-01"
 
 def process_file(mseed_file, output, sta = None, net = None, loc = None, cha = None):
     """    To rename mseed file
@@ -76,7 +75,7 @@ def get_config(cfg_file):
     return load_json(cfg_file)
 
 
-def check_seed_format(new_infos: dict) -> bool:
+def check_seed_format(new_infos: Dict[Any, Any]) -> bool:
     """Check the seed format
 
     :param new_infos: Set dict with new infos
@@ -90,7 +89,7 @@ def check_seed_format(new_infos: dict) -> bool:
            test_channel_format(new_infos['channel'])
 
 
-def get_new_infos(info: dict, new: list) -> dict:
+def get_new_infos(info: Dict[Any, Any], new: list) -> dict:
     """Generate path in SDS and new stream info
 
     :param info: Infos of mseed file
@@ -157,9 +156,9 @@ def main():
         for key, values in list_in_sds.items():
             if args.verbose:
                 print(f"Process file : {key}")
-            if check_dates_window(f"{values['info']['year']}.{values['info']['day']}", date['start'], date['end']):
+            if check_dates_window(f"{values['info']['year']}.{values['info']['day']}", date['start'], date['end'], max_date=MAXDATES):
                 new_infos = get_new_infos(values['info'], new)
-                if check_seed_format(new_infos): # TODO maybe to do the verification before begins the process
+                if True: #check_seed_format(new_infos): # TODO maybe to do the verification before begins the process
                     create_dir(os.path.join(args.sds, new_infos["new_path"]))
                     output = os.path.join(args.sds, new_infos['new_path'], new_infos['name'])
                     if not os.path.isfile(output):
