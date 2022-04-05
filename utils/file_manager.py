@@ -5,6 +5,7 @@ import json
 import fnmatch
 from pathlib import Path
 from typing import Union
+from datetime import datetime
 
 
 def get_list_file(pattern, directory: str) -> list:
@@ -20,10 +21,36 @@ def get_list_file(pattern, directory: str) -> list:
     return files
 
 
+def check_dates_window(current_time: str, start: str, end: str, format: str = '%Y.%j') -> bool:
+    """Checks if the time is between start and end
+       Put '' if no start or end date
+    :param current_time: set the time to test
+    :type current_time: str
+    :param start: set the start time
+    :type start: str
+    :param end: set the end time
+    :type end: str
+    :param format: the format of the time, defaults to '%Y.%j'
+    :type format: str, optional
+    :return: return true if the current time is between start and end
+    :rtype: bool
+    """
+    if start == '':
+        t_start = datetime.strptime('1971.001', format)
+    else:
+        t_start = datetime.strptime(start, format)
+    if end == '':
+        t_end = datetime.strptime('2099.001', format)
+    else:
+        t_end = datetime.strptime(end, format)
+
+    t_current = datetime.strptime(current_time, format)
+    return t_start <= t_current <= t_end
+
+
 def scan_dir(directory: str,
              net: str ='*', sta: str ='*',
-             loc: str ='*', cha: str ='*',
-             start: str = None, end : str = None) -> dict:
+             loc: str ='*', cha: str ='*') -> dict:
     """To get dict for each file in the sds
        - name file is the key
        Information for each files is:
@@ -38,8 +65,8 @@ def scan_dir(directory: str,
     :rtype: dict
     """
     file_in_dir = {}
-    for path in Path(directory).rglob('*.*.*.*.*.*.*'):
-        if test_mseed_sds_name_format(path) and in_white_list(path):
+    for path in Path(directory).rglob(f'{net}.{sta}.{loc}.{cha}.*.*.*'):      #net.sta.loc.cha.D.year.day
+        if test_mseed_sds_name_format(path):
             stat_file = os.stat(path.absolute())
             infos = path.name.split('.')
             file_in_dir[path.name] = {'name': path.name,
@@ -88,7 +115,7 @@ def in_white_list(path, net_pattern='*', station_pattern='*', location_pattern='
         return False
 
 
-def test_mseed_sds_name_format(path: str):
+def test_mseed_sds_name_format(path: Path):
     """
     To test if the name has a good format
     """
@@ -96,6 +123,58 @@ def test_mseed_sds_name_format(path: str):
         r"[A-Z0-9]{1,2}\.[A-Z0-9]{1,5}\.[0-9]{0,2}\.[A-Z0-9]{1,3}\.[A-Z]{1}\.[0-9]{4}\.[0-9]{1,3}",
         path.name)
     return match
+
+
+def test_network_format(network: str) -> re:
+    """
+    To test if the network has a good format
+    """
+    if 1 <= len(network) <= 2:
+        match = re.search(
+            r"[A-Z0-9]{1,2}",
+            network)
+        return bool(match)
+    else: # TODO return erreur or log file
+        return False
+
+
+def test_station_format(station: str) -> re:
+    """
+    To test if the station has a good format
+    """
+    if 1 <= len(station) <= 5:
+        match = re.search(
+            r"[A-Z0-9]{1,5}",
+            station)
+        return match
+    else: # TODO return erreur or log file
+        return False
+
+
+def test_channel_format(channel: str) -> re:
+    """
+    To test if the channel has a good format
+    """
+    if 1 <= len(channel) <= 3:
+        match = re.search(
+            r"[A-Z0-9]{1,3}",
+            channel)
+        return match
+    else:   # TODO return erreur or log file
+        return False
+
+
+def test_location_format(location: str) -> re:
+    """
+    To test if the location has a good format
+    """
+    if 0 <= len(location) <= 2:
+        match = re.search(
+            r"[0-9]{0,2}",
+            location)
+        return match
+    else:    # TODO return erreur or log file
+        return False
 
 
 def write_json(data, filename: str) -> None:
