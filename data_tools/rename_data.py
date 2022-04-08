@@ -14,8 +14,6 @@ sys.path.insert(0, os.path.dirname(os.path.join(SCRIPT_DIR, '..', 'utils')))
 # ---------------------------------------------------------------------------
 import argparse
 import subprocess
-from pathlib import Path
-from os.path import relpath
 from typing import Any, Dict
 from utils.file_manager import load_json, create_dir, check_dates_window, scan_dir
 from utils.file_manager import test_channel_format, test_location_format,\
@@ -150,7 +148,7 @@ def main():
         old = current_conf['old']
         new = current_conf['new']
         date = current_conf['date']
-        list_in_sds = scan_dir(os.path.join(args.sds), # TODO year add
+        list_in_sds = scan_dir(os.path.join(args.sds),
                                net=old[0], sta =old[1],
                                loc=old[2], cha=old[3])
         for key, values in list_in_sds.items():
@@ -158,7 +156,7 @@ def main():
                 print(f"Process file : {key}")
             if check_dates_window(f"{values['info']['year']}.{values['info']['day']}", date['start'], date['end'], max_date=MAXDATES):
                 new_infos = get_new_infos(values['info'], new)
-                if True: #check_seed_format(new_infos): # TODO maybe to do the verification before begins the process
+                if check_seed_format(new_infos): # TODO maybe to do the verification before begins the process
                     create_dir(os.path.join(args.sds, new_infos["new_path"]))
                     output = os.path.join(args.sds, new_infos['new_path'], new_infos['name'])
                     if not os.path.isfile(output):

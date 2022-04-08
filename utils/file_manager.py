@@ -21,7 +21,7 @@ def get_list_file(pattern, directory: str) -> list:
     return files
 
 
-def check_dates_window(current_time: str, start: str, end: str, format: str = '%Y-%M-%d',
+def check_dates_window(current_time: str, start: str, end: str, format: str = '%Y-%m-%d',
                        min_date: str = '1971-01-01',  max_date: str = '2099-01-01') -> bool:
     """Checks if the time is between start and end
        Put '' if no start or end date , it will be replaced by min_date and max_date
@@ -32,7 +32,7 @@ def check_dates_window(current_time: str, start: str, end: str, format: str = '%
     :type start: str
     :param end: set the end time
     :type end: str
-    :param format: the format of the time, defaults to %Y-%M-%d'
+    :param format: the format of the time, defaults to %Y-%m-%d'
     :type format: str, optional
     :param min_date: Set the min date, defaults to 1971-01-01'
     :type min_date: str, optional

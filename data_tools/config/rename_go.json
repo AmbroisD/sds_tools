@@ -1,0 +1,6 @@
+[
+    {"old": ["Z2", "HBAR", "*", "HHZ"], "new": ["AM", "RAT", "01", "VDO"], "date":{"start":"2021-01-01", "end": "2022-01-01"}},
+    {"old": ["Z2", "HBAR", "*", "HHZ"], "new": ["RE", "CHAT", null, null], "date":{"start":"2021-01-01", "end": "2022-01-01"}},
+    {"old": ["Z2", "HBAR", "*", "HHN"], "new": ["RE", "CHAT", null, "HH1"], "date":{"start":"2021-01-01", "end": "2022-01-01"}},
+    {"old": ["Z2", "HBAR", "*", "HHE"], "new": ["RE", "CHAT", null, "HH2"], "date":{"start":"2021-01-01", "end": "2022-01-01"}}
+    ]
