@@ -4,7 +4,8 @@ import os
 import json
 import fnmatch
 from pathlib import Path
-from typing import Union
+from typing import Any, Union, Dict
+from _ctypes import PyObj_FromPtr
 from datetime import datetime
 
 
@@ -56,7 +57,9 @@ def check_dates_window(current_time: str, start: str, end: str, format: str = '%
 
 def scan_dir(directory: str,
              net: str ='*', sta: str ='*',
-             loc: str ='*', cha: str ='*') -> dict:
+             loc: str ='*', cha: str ='*',
+             year: str ='*', day: str ='*',
+             quality: str ='*') -> dict:
     """To get dict for each file in the sds
        - name file is the key
        Information for each files is:
@@ -71,7 +74,7 @@ def scan_dir(directory: str,
     :rtype: dict
     """
     file_in_dir = {}
-    for path in Path(directory).rglob(f'{net}.{sta}.{loc}.{cha}.*.*.*'):      #net.sta.loc.cha.D.year.day
+    for path in Path(directory).rglob(f'{net}.{sta}.{loc}.{cha}.{quality}.{year}.{day}'):      #net.sta.loc.cha.D.year.day
         if test_mseed_sds_name_format(path):
             stat_file = os.stat(path.absolute())
             infos = path.name.split('.')
@@ -88,6 +91,20 @@ def scan_dir(directory: str,
                                                 'day'     : infos[6]}
                                       }
     return file_in_dir
+
+
+def check_seed_format(new_infos: Dict[Any, Any]) -> bool:
+    """Check the seed format
+
+    :param new_infos: Set dict with new infos
+    :type new_infos: dict
+    :return: return True if the seed format is good.
+    :rtype: bool
+    """
+    return test_station_format(new_infos['station']) and\
+           test_network_format(new_infos['network']) and\
+           test_location_format(new_infos['location']) and\
+           test_channel_format(new_infos['channel'])
 
 
 def check_pattern(str_to_test, pattern):
@@ -193,7 +210,56 @@ def write_json(data, filename: str) -> None:
     with open(filename, "w") as outfile:
         outfile.write(json.dumps(data, indent=4))
 
+class NoIndent(object):
+    """ Value wrapper. """
+    def __init__(self, value):
+        self.value = value
 
+class MyEncoder(json.JSONEncoder): 
+    FORMAT_SPEC = '@@{}@@'
+    regex = re.compile(FORMAT_SPEC.format(r'(\d+)'))
+
+    def __init__(self, **kwargs):
+        # Save copy of any keyword argument values needed for use here.
+        self.__sort_keys = kwargs.get('sort_keys', None)
+        super(MyEncoder, self).__init__(**kwargs)
+
+    def default(self, obj):
+        return (self.FORMAT_SPEC.format(id(obj)) if isinstance(obj, NoIndent)
+                else super(MyEncoder, self).default(obj))
+
+    def encode(self, obj):
+        format_spec = self.FORMAT_SPEC  # Local var to expedite access.
+        json_repr = super(MyEncoder, self).encode(obj)  # Default JSON.
+
+        # Replace any marked-up object ids in the JSON repr with the
+        # value returned from the json.dumps() of the corresponding
+        # wrapped Python object.
+        for match in self.regex.finditer(json_repr):
+            # see https://stackoverflow.com/a/15012814/355230
+            id = int(match.group(1))
+            no_indent = PyObj_FromPtr(id)
+            json_obj_repr = json.dumps(no_indent.value, sort_keys=self.__sort_keys)
+
+            # Replace the matched id string with json formatted representation
+            # of the corresponding Python object.
+            json_repr = json_repr.replace(
+                            '"{}"'.format(format_spec.format(id)), json_obj_repr)
+
+        return json_repr
+
+
+def write_json_scan(data, filename: str) -> None:
+    """To save list or dict in json file
+
+    Arg
+        data ([list] or [dict]): data to save
+        filename ([str])       : set the file name
+    """
+    with open(filename, "w") as outfile:
+        outfile.write(json.dumps(data))
+        
+        
 def load_json(json_filename: str) -> Union[list, dict]:
     """
     Load a JSON from a given filename
