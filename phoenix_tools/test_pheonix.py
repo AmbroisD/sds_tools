@@ -1,9 +1,10 @@
 import sys
 sys.path.insert(0, '/u/leros/SISMO/PRETRAITEMENT/David/abstractdb')
 sys.path.insert(0, '/u/leros/SISMO/PRETRAITEMENT/David/pygraph')
+sys.path.insert(0, '/u/leros/SISMO/PRETRAITEMENT/David/sds_tools/phoenix_tools')
 
 from oca.database.abstractdb import DatabaseObjectFactory
-from phoenix_tools.check_metadata import MetaDataCheck
+from check_metadata import MetaDataCheck
 
 HOST = 'babel.unice.fr'
 USER = 'sysop'
@@ -34,7 +35,7 @@ def get_station():
 
  
 if __name__ == '__main__':
-    for sta in all_station:
+    for sta in ["CABP"]:#all_station:
         meta = MetaDataCheck(station=sta)
         report = meta.check_metadata()
-        print(report)
+        #print(report)
