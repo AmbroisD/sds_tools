@@ -18,6 +18,8 @@ else:
 
 
 """
+import pandas as pd
+from datetime import datetime
 from oca.database.abstractdb import DatabaseObjectFactory
 
 
@@ -47,6 +49,7 @@ class MetaDataCheck(object):
         self.station = None
         self.station_exist = True
         self.channels = None
+        self.df_channels = None
         self.channel_exist = True
         self.report = {"name" : self.name}
         
@@ -58,7 +61,20 @@ class MetaDataCheck(object):
         """
         """
         self.channels = self.PHOENIX_DB.get_table_objects("channel", filter_select = ("station_fk", self.station.object_id()))
-        print(len(self.channels))        
+        
+        # Create DataFrame
+        df = pd.DataFrame(columns=['station', 'location', 'channel', 'open', 'close', 'comment'])
+        
+        for channel in self.channels:
+            df = df.append({'station' : self.name, 
+                            'location': channel.location_code(), 
+                            'channel' : channel.iris_code(), 
+                            'open': channel.open_date(),
+                            'close': channel.close_date(), 
+                            'comment': channel.comments()} 
+                           , ignore_index=True)
+        
+        self.df_channels = df.sort_values('open')
 
     def _get_station(self):
         station = self.PHOENIX_DB.get_table_objects("station", filter_select = ("iris_code", self.name))
@@ -79,13 +95,10 @@ class MetaDataCheck(object):
         end_period = date[1] 
              
 
-    def _channel_exist(self) -> None:
+    def channel_exist(self) -> None:
         pass
 
-    def _channel_open(self, date: list) -> None:
-        pass
-
-    def _check_period(self) -> None:
+    def channel_open(self, date: list) -> None:
         pass
 
     def _check_sampling_rate(self) -> None:
@@ -97,11 +110,35 @@ class MetaDataCheck(object):
         """
         pass
     
+    def check_channel_period(self, location: str, channel: str, date: str) -> None:
+        """Verify if channel period exist in database
+
+        :param location: set location code
+        :type location: str
+        :param channel: set channel code
+        :type channel: str
+        :param date: set date (format :  "%Y.%j")
+        :type date: str
+        """
+        date = datetime.strptime(date, "%Y.%j")
+        
+        period = self.df_channels.loc[(self.df_channels["location"] == location) &
+                                      (self.df_channels['channel'] == channel) &
+                                      (self.df_channels['open'] <= date) & 
+                                      (self.df_channels['close'] >= date)]
+
+        if len(period) == 0:
+            return False
+        else:
+            return True
+        
+    
     def check_metadata(self):
         """
         """
         self.report["station_exist"] = self.station_exist
-        self.report["list_channel"] = self.channels
+        #self.report["list_channel"] = self.channels
+        self.check_channel_period("00", "ENZ", "2006-05-08")
         return self.report
         
         #self.report["station_exist"] = station_exist

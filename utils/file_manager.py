@@ -72,9 +72,24 @@ def scan_dir(directory: str,
     :type dir: str
     :return: return dict with files that match the pattern
     :rtype: dict
+    
+    
+    Output dict Struture:
+    path : {'name': path.name,
+             'abs_path': str(path.absolute()),
+             'size': stat_file.st_size,
+             'last_m': stat_file.st_mtime,
+             'info' : {'network' : infos[0],
+                       'station' : infos[1],
+                       'location': infos[2],
+                       'channel' : infos[3],
+                       'quality' : infos[4],
+                       'year'    : infos[5],
+                       'day'     : infos[6]}
+             }
     """
     file_in_dir = {}
-    for path in Path(directory).rglob(f'{net}.{sta}.{loc}.{cha}.{quality}.{year}.{day}'):      #net.sta.loc.cha.D.year.day
+    for path in Path(directory).rglob(f'{net}.{sta}.{loc}.{cha}.{quality}.{year}.{day}'):      # net.sta.loc.cha.D.year.day
         if test_mseed_sds_name_format(path):
             stat_file = os.stat(path.absolute())
             infos = path.name.split('.')
