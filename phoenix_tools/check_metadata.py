@@ -66,13 +66,17 @@ class MetaDataCheck(object):
         df = pd.DataFrame(columns=['station', 'location', 'channel', 'open', 'close', 'comment'])
         
         for channel in self.channels:
-            df = df.append({'station' : self.name, 
-                            'location': channel.location_code(), 
-                            'channel' : channel.iris_code(), 
-                            'open': channel.open_date(),
-                            'close': channel.close_date(), 
-                            'comment': channel.comments()} 
-                           , ignore_index=True)
+            close_date = channel.close_date()
+            if close_date is None:
+                close_date = datetime.strptime("2999-01-01", "%Y-%m-%d")
+            open = datetime(channel.open_date().year, channel.open_date().month, channel.open_date().day, 0, 0, 0) # Set the time at the beginning of the day
+            new_channel = {'station' : self.name, 
+                          'location': channel.location_code(), 
+                          'channel' : channel.iris_code(), 
+                          'open': open,
+                          'close': close_date, 
+                          'comment': channel.comments()}
+            df = pd.concat([df, pd.DataFrame.from_records([new_channel])], ignore_index=True)
         
         self.df_channels = df.sort_values('open')
 
@@ -124,9 +128,12 @@ class MetaDataCheck(object):
         
         period = self.df_channels.loc[(self.df_channels["location"] == location) &
                                       (self.df_channels['channel'] == channel) &
-                                      (self.df_channels['open'] <= date) & 
+                                      (self.df_channels['open'] <= date) &
                                       (self.df_channels['close'] >= date)]
-
+  
+        #print(period['close'])
+        #period = period.loc[(period['close'] == None)]
+        
         if len(period) == 0:
             return False
         else:

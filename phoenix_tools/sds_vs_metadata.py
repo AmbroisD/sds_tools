@@ -9,7 +9,9 @@
    and save result in SQS (Seed Quality Structure)."""
 # ---------------------------------------------------------------------------
 import os
+from pickle import FALSE
 import sys
+from tabnanny import verbose
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(os.path.join(SCRIPT_DIR, '..', 'utils')))
 # ---------------------------------------------------------------------------
@@ -19,6 +21,7 @@ from datetime import datetime
 from check_metadata import MetaDataCheck
 from utils.file_manager import create_dir, load_json, scan_dir, check_seed_format, write_json
 
+VERBOSE = False
 SDS="/Users/ambrois/Documents/01_Scripts/data/SDS_TEST"
 LIST2VERIFY = ["ABAB", "ABH2", "ABLA", "ACHN", "ADUR", "ALBE",
                "ALIB", "AMNT", "AMTV", "ANUV", "APED", "APLA",
@@ -89,11 +92,12 @@ def main(station):
         if not meta.check_channel_period(location, channel, date):
             pb_station = add_new_error(pb_station, station, location, channel, date)
         else:
-            print("ok")
+            if VERBOSE:
+                print("ok")
     resume = resume_results(pb_station)
     write_json(resume, 'test_pheonix.json')
             
         
 if __name__ == '__main__':
     #for sta in LIST2VERIFY:
-    main("CHAT")
+    main("HBAR")
