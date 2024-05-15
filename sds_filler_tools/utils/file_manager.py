@@ -222,8 +222,17 @@ def write_json(data, filename: str) -> None:
         data ([list] or [dict]): data to save
         filename ([str])       : set the file name
     """
+    # Extract directory path from filename
+    directory = os.path.dirname(filename)
+    
+    # Create intermediate directories if they don't exist
+    if directory:
+        os.makedirs(directory, exist_ok=True)
+    
+    # Write data to the JSON file
     with open(filename, "w") as outfile:
-        outfile.write(json.dumps(data, indent=4))
+        json.dump(data, outfile, indent=4)
+        
 
 class NoIndent(object):
     """ Value wrapper. """

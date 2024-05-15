@@ -73,4 +73,4 @@ def main(old_sds, new_sds, pack_size=512):
 
 
 if __name__ == '__main__':
-    main('01_SDS_4096', 'new_02_SDS_512')
+    main('SDS_4096', 'SDS_512')

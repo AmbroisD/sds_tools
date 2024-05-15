@@ -22,7 +22,7 @@ from utils.file_manager import test_channel_format, test_location_format,\
 # ---------------------------------------------------------------------------
 
 GSMOD_PATH = "/Users/ambrois/Documents/01_Scripts/slinkgo/gmsmod"
-MAXDATES = "2022-01-01"
+MAXDATES = "2024-01-01"
 
 def process_file(mseed_file, output, sta = None, net = None, loc = None, cha = None):
     """    To rename mseed file
@@ -73,7 +73,7 @@ def get_config(cfg_file):
     return load_json(cfg_file)
 
 
-def check_seed_format(new_infos: Dict[Any, Any]) -> bool:
+def check_seed_format(new_infos: Dict[Any, Any]) -> bool:   #TODO import from file manager or create new import( seed format)
     """Check the seed format
 
     :param new_infos: Set dict with new infos

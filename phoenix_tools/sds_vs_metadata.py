@@ -9,9 +9,8 @@
    and save result in SQS (Seed Quality Structure)."""
 # ---------------------------------------------------------------------------
 import os
-from pickle import FALSE
 import sys
-from tabnanny import verbose
+from tqdm import tqdm
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(os.path.join(SCRIPT_DIR, '..', 'utils')))
 # ---------------------------------------------------------------------------
@@ -23,7 +22,7 @@ from utils.file_manager import create_dir, load_json, scan_dir, check_seed_forma
 
 VERBOSE = False
 SDS="/Users/ambrois/Documents/01_Scripts/data/SDS_TEST"
-LIST2VERIFY = ["ABAB", "ABH2", "ABLA", "ACHN", "ADUR", "ALBE",
+LIST2VERIFY = ["ABAB", "ABH2", "ABLA", "ACHN", "ADUR",  #ALBE
                "ALIB", "AMNT", "AMTV", "ANUV", "APED", "APLA",
                "APO1", "APO2", "AQUE", "BALZ", "CABP", "CHIB",
                "CHIS", "FAEM", "FLFR", "GYE1", "GYE2", "GYE3",
@@ -48,14 +47,11 @@ def intervals_extract(iterable):
     lambda t: t[1] - t[0]):
         group = list(group)
         yield [group[0][1], group[-1][1]]
-  
-    # Driver code
-    #l = [2, 3, 4, 5, 7, 8, 9, 11, 15, 16]
-    #print( list(intervals_extract(l)))
 
 
 def resume_results(pb_station):
     f = open("resume_pb_station.txt", "w")
+    list_period_missing = []
     for sta_k, stations in pb_station.items():
         for loc_k, loc in stations.items():
             for cha_k, channel in loc.items():
@@ -65,6 +61,9 @@ def resume_results(pb_station):
                         end = datetime.strptime(f"{year_k}.{period[1]}", "%Y.%j" )
                         f.write(f"Station: {sta_k} | Location: {loc_k} | Channel: {cha_k} | Year: {year_k} | Start: {start} | End: {end}")
                         f.write('\n')
+                        list_period_missing.append([sta_k, loc_k, cha_k, start.isoformat(), end.isoformat()])
+                        
+    return list_period_missing
 
 
 def add_new_error(pb_station: dict, station: str , location: str, channel: str, date: str):
@@ -81,9 +80,10 @@ def add_new_error(pb_station: dict, station: str , location: str, channel: str, 
     return pb_station
 
 
-def main(station):
+def main(station: str):
     pb_station = {}
     meta = MetaDataCheck(station=station)
+    #print(meta.df_channels)
     list_file = get_file_list(station)
     for _, file in list_file.items():
         location = file['info']['location']
@@ -95,7 +95,8 @@ def main(station):
             if VERBOSE:
                 print("ok")
     resume = resume_results(pb_station)
-    write_json(resume, 'test_pheonix.json')
+    if pb_station != {}: 
+        write_json(resume, f"./stations_json/{station}.json")
             
         
 if __name__ == '__main__':

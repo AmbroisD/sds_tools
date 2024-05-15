@@ -3,6 +3,7 @@ from datetime import datetime
 import os
 import shutil
 import configparser
+import sys
 from obspy import read
 from pathlib import Path
 from utils.file_manager import load_json, scan_dir, write_json, create_dir
@@ -10,31 +11,32 @@ from obspy.core.stream import Stream
 
 
 class SdsFiller(object):
-    def __init__(self, config_file_path: str, verbose=1) -> None:
+    def __init__(self, config_file_path: str, station="*", output="./sds_filler_results", verbose=1) -> None:
         """Initialize class
 
         Args:
             config_file_path (str): Set path of config file
-            src_another_sds (str): Set path of sds source
+            src_source_sds (str): Set path of sds source
         """
         self.verbose = verbose
         self.config = configparser.ConfigParser()
         self.config.read(config_file_path)
         self.main_sds_path = self.config.get("sds", "path")
-        self.src_another_sds = self.config.get("src", "path")
-        self.report_path = self.config.get("report", "path")
+        self.src_source_sds = self.config.get("src", "path")
+        self.report_path = output
         self.save_merged_file_path = self.config.get("merge", "path")
-        self.files_in_another_sds = self._load_report("files_in_another_sds")             # ALL FILES IN SDS SRC
+        self.files_in_source_sds = self._load_report("files_in_source_sds")             # ALL FILES IN SDS SRC
         self.files_already_in_main_sds = self._load_report("files_already_in_main_sds")   # FILES ALREADY IN MAIN SDS
         self.files_not_in_main_sds = self._load_report("files_not_in_main_sds")           # FILES NOT IN MAIN SDS
         self.files_in_both_with_diff = self._load_report("files_in_both_with_diff")       # FILES IN BOTH SDS WITH DIFF
         self.files_copied = self._load_report("files_copied")                             # FILES COPIED IN MAIN SDS
         self.files_merged = self._load_report("files_merged")                             # FILES MERGED IN MAIN SDS
         self.files_merged_failed = self._load_report("files_merged_failed")               # MERGED FILES THAT FAILED
+        self.station = station
 
     def _search_file_in_main_sds(self, file_path: str):
         """
-        This function takes a file from another SDS and
+        This function takes a file from source SDS and
         search if this file exist in the main SDS
 
         Args:
@@ -97,8 +99,8 @@ class SdsFiller(object):
 
         """
         report_path = os.path.join(self.report_path, '%s.json' % name)
-        if name == "files_in_another_sds":
-            write_json(self.files_in_another_sds, report_path)
+        if name == "files_in_source_sds":
+            write_json(self.files_in_source_sds, report_path)
         elif name == "files_already_in_main_sds":
             write_json(self.files_already_in_main_sds, report_path)
         elif name == "files_not_in_main_sds":
@@ -124,8 +126,8 @@ class SdsFiller(object):
         self.files_not_in_main_sds = []
         self.files_already_in_main_sds = []
         self.files_in_both_with_diff = []
-        for file_name in self.files_in_another_sds.keys():
-            stat = self.files_in_another_sds[file_name]
+        for file_name in self.files_in_source_sds.keys():
+            stat = self.files_in_source_sds[file_name]
             exist, st_sds = self._search_file_in_main_sds(
                 self._get_file_path_in_main_sds(stat))
             if exist:
@@ -160,20 +162,23 @@ class SdsFiller(object):
                                     )
         return files_sds_path
 
-    def scan_another_sds(self) -> None:
+    def scan_source_sds(self) -> None:
         """
-        Scan and list file in another sds
+        Scan and list file in source sds
         """
         if self.verbose > 0:
-            print('Scan dir: %s' % self.src_another_sds)
-        self.files_in_another_sds = scan_dir(self.src_another_sds)
-        self._write_report("files_in_another_sds")
+            print('Scan dir: %s' % self.src_source_sds)
+        self.files_in_source_sds = scan_dir(self.src_source_sds, sta = self.station)
+        self._write_report("files_in_source_sds")
         if self.verbose > 0:
-            print('%s files scanned' % len(self.files_in_another_sds))
+            print('%s files scanned' % len(self.files_in_source_sds))
 
     def get_diff_between_sds(self) -> None:
         """[summary]
         """
+        if not os.path.exists(self.report_path):
+            print("Error: dir does not exist  (Check output dir or Run --scan before --diff)")
+            sys.exit(1)
         if self.verbose > 0:
             print('Search diff with the main SDS')
         self._check_in_sds()
@@ -274,7 +279,7 @@ class SdsFiller(object):
             dict: return all report
         """
         report = {
-            "files_in_another_sds": self.files_in_another_sds,             # ALL FILES IN SDS SRC
+            "files_in_source_sds": self.files_in_source_sds,             # ALL FILES IN SDS SRC
             "files_already_in_main_sds": self.files_already_in_main_sds,   # FILES ALREADY IN MAIN SDS
             "files_not_in_main_sds": self.files_not_in_main_sds,           # FILES NOT IN MAIN SDS
             "files_in_both_with_diff": self.files_in_both_with_diff,       # FILES IN BOTH SDS WITH DIFF
