@@ -128,9 +128,12 @@ class SdsFiller(object):
         elif name == "files_merged_failed":
             write_json(self.files_merged_failed, report_path)
         elif name == "files_not_in_main_sds_but_other_location_code_exists":
+            if self.verbose > 0:
+                if len(self.files_not_in_main_sds_but_other_location_code_exists) > 0:
+                    print("Warning: File with other location code found")
             write_json(self.files_not_in_main_sds_but_other_location_code_exists, report_path)
         else:
-            print("Name %s not exist" % name)
+            print("Error: Name %s not exist" % name)
 
     
     def _search_other_location_code(self, path: Path) -> Any:
@@ -219,11 +222,11 @@ class SdsFiller(object):
         Scan and list file in source sds
         """
         if self.verbose > 0:
-            print('Scan dir: %s' % self.src_source_sds)
+            print('Info: Scan dir: %s' % self.src_source_sds)
         self.files_in_source_sds = scan_dir(self.src_source_sds, sta = self.station, loc=self.location, year=self.year)
         self._write_report("files_in_source_sds")
         if self.verbose > 0:
-            print('%s files scanned' % len(self.files_in_source_sds))
+            print('Info: %s files scanned' % len(self.files_in_source_sds))
 
     def get_diff_between_sds(self) -> None:
         """[summary]
@@ -232,7 +235,7 @@ class SdsFiller(object):
             print("Error: dir does not exist  (Check output dir or Run --scan before --diff)")
             sys.exit(1)
         if self.verbose > 0:
-            print('Search diff with the main SDS')
+            print('Info: Search diff with the main SDS')
         self._check_in_sds()
         self._write_report("files_not_in_main_sds")
         self._write_report("files_already_in_main_sds")
@@ -249,7 +252,7 @@ class SdsFiller(object):
                 dist_path = self._get_file_path_in_main_sds(st_file)
                 if not os.path.exists(dist_path):
                     if self.verbose > 1: 
-                        print("Create rep : %s" % dist_path[:-len(st_file['name'])])
+                        print("Info: Create rep : %s" % dist_path[:-len(st_file['name'])])
                     create_dir(dist_path[:-len(st_file['name'])])
                     shutil.copy(st_file['abs_path'], dist_path)
                     st_file["copied_to"] = dist_path
@@ -257,9 +260,9 @@ class SdsFiller(object):
                     st_file["copy_date"] = datetime.now().strftime("%Y-%m-%dT%H:%M:%S") 
                     self.files_copied.append(st_file)
                     if self.verbose > 0:
-                        print("File: %s copied" % st_file['name'])
+                        print("Info: File: %s copied" % st_file['name'])
                 else :
-                    print("The file %s already exist: Copy canceled " % dist_path)
+                    print("Warning: The file %s already exist: Copy canceled " % dist_path)
             except:
                 print("Error during copy : %s" % st_file['name']) 
         self._write_report("files_copied")
@@ -269,7 +272,7 @@ class SdsFiller(object):
         To merge when there are mseed file in both sds
 
         """
-        print("Merging starting")
+        print("Info: Merging starting")
         self.files_merged = []
         self.files_merged_failed = []
         for st_file in self.files_in_both_with_diff:
@@ -283,13 +286,13 @@ class SdsFiller(object):
                 st += mseed_sds
                 st.merge(-1)
                 gaps = st.get_gaps(min_gap=1)
-                print("%s len = %s" % (st_file["name"], len(st)))
+                print("Info: %s len = %s" % (st_file["name"], len(st)))
                 for gap in gaps:
                     if gap[6] < 0:
                         overlap = True
                         break
                 if not overlap:
-                    print("Merge success")
+                    print("Info: Merge success")
                     save_path = os.path.join(self.save_merged_file_path, st_file['name'])
                     shutil.move(dist_path, save_path)
                     st_file['merge'] = {'old_file': save_path,
@@ -311,13 +314,13 @@ class SdsFiller(object):
                         st_file['merge_fail'] = {'fail_comment': 'file already exist'}
                         self.files_merged_failed.append(st_file)
                 else:
-                    print("Merge failled")
+                    print("Error: Merge failled")
                     st_file['merge_fail'] = {'fail_time': str(datetime.now()),
                                              'len_after_merge' : len(st)}
                     self.files_merged_failed.append(st_file)
             except:
                 print("Error during merge : %s" % st_file['name'])
-            print("Merge finished")
+            print("Info: Merge finished")
             self._write_report("files_merged")
             self._write_report("files_merged_failed")
 
