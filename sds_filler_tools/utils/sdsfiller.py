@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
+from ast import List
 from datetime import datetime
+import glob
 import os
 import shutil
 import configparser
 import sys
+from typing import Any
 from obspy import read
 from pathlib import Path
 from utils.file_manager import load_json, scan_dir, write_json, create_dir
@@ -11,7 +14,7 @@ from obspy.core.stream import Stream
 
 
 class SdsFiller(object):
-    def __init__(self, config_file_path: str, station="*", output="./sds_filler_results", verbose=1) -> None:
+    def __init__(self, config_file_path: str, station="*", year="*", location="*", output="./sds_filler_results", verbose=1) -> None:
         """Initialize class
 
         Args:
@@ -29,10 +32,13 @@ class SdsFiller(object):
         self.files_already_in_main_sds = self._load_report("files_already_in_main_sds")   # FILES ALREADY IN MAIN SDS
         self.files_not_in_main_sds = self._load_report("files_not_in_main_sds")           # FILES NOT IN MAIN SDS
         self.files_in_both_with_diff = self._load_report("files_in_both_with_diff")       # FILES IN BOTH SDS WITH DIFF
+        self.files_not_in_main_sds_but_other_location_code_exists = self._load_report("files_not_in_main_sds_but_other_location_code_exists")
         self.files_copied = self._load_report("files_copied")                             # FILES COPIED IN MAIN SDS
         self.files_merged = self._load_report("files_merged")                             # FILES MERGED IN MAIN SDS
         self.files_merged_failed = self._load_report("files_merged_failed")               # MERGED FILES THAT FAILED
         self.station = station
+        self.year = year
+        self.location = location
 
     def _search_file_in_main_sds(self, file_path: str):
         """
@@ -46,6 +52,11 @@ class SdsFiller(object):
             [bool] : return True if file exists
             [dict] : return dict with stat file in main SDS
         """
+        exist = False
+        dict_file = {}
+        other_location_code_exist = False
+        other_file_path_list = []
+        
         pth = Path(file_path)
 
         if os.path.exists(pth):
@@ -55,9 +66,12 @@ class SdsFiller(object):
                          'size': st_sds.st_size,
                          'last_m': st_sds.st_mtime,
                          'exist': True}
-            return True, dict_file
+            exist = True
         else:
-          return False, {}
+            other_location_code_exist, other_file_path_list = self._search_other_location_code(pth)
+            #print(other_location_code_exist, other_file_path_list)
+    
+        return exist, dict_file, other_location_code_exist, other_file_path_list
 
 
     def _compare_size(self, st_src: dict, st_sds: dict) -> bool:
@@ -76,7 +90,7 @@ class SdsFiller(object):
             return False
 
 
-    def _load_report(self, name: str) -> list:
+    def _load_report(self, name: str) -> Any:
         """Load report]
 
         Args:
@@ -113,10 +127,44 @@ class SdsFiller(object):
             write_json(self.files_merged, report_path)
         elif name == "files_merged_failed":
             write_json(self.files_merged_failed, report_path)
+        elif name == "files_not_in_main_sds_but_other_location_code_exists":
+            write_json(self.files_not_in_main_sds_but_other_location_code_exists, report_path)
         else:
             print("Name %s not exist" % name)
 
-
+    
+    def _search_other_location_code(self, path: Path) -> Any:
+        """
+        Check if there exists another location_code in the same directory as `path`
+        with a modified name pattern where the location code of the filename is replaced with '*'.
+    
+        Args:
+            path (Path): The path of the file to be checked.
+    
+        Returns:
+            bool: True if at least one other matching file is found, False otherwise.
+    
+        Example:
+            If the input path is "/path/to/file/RE.CHAT.01.HH1.D.2021.241",
+            the function will look for files matching the pattern "RE.CHAT.*.HH1.D.2021.241"
+            in the same directory.
+        """
+        path_parent = path.parent
+        path_name = path.name
+        split_path = path_name.split(".")
+        
+        if len(split_path) > 2:
+            split_path[2] = "*"
+        modified_path_name = ".".join(split_path)
+        
+        # Create the search pattern and find all files matching the pattern
+        pattern = os.path.join(path_parent, modified_path_name)
+        matching_files = glob.glob(pattern, recursive=True)
+        
+        if str(path) in matching_files:
+            matching_files.remove(str(path))
+        
+        return len(matching_files) > 0, matching_files
 
     def _check_in_sds(self) -> None:
         """
@@ -126,9 +174,10 @@ class SdsFiller(object):
         self.files_not_in_main_sds = []
         self.files_already_in_main_sds = []
         self.files_in_both_with_diff = []
+        self.files_not_in_main_sds_but_other_location_code_exists = []
         for file_name in self.files_in_source_sds.keys():
             stat = self.files_in_source_sds[file_name]
-            exist, st_sds = self._search_file_in_main_sds(
+            exist, st_sds, other_location_code, other_location_code_path_list = self._search_file_in_main_sds(
                 self._get_file_path_in_main_sds(stat))
             if exist:
                 if self._compare_size(stat, st_sds):
@@ -139,6 +188,9 @@ class SdsFiller(object):
                     stat['comment'] = 'Size file: %s , Size file in SDS: %s' % (
                         stat['size'], st_sds['size'])
                     self.files_in_both_with_diff.append(stat)  # Already in sds with size diff
+            elif not exist and other_location_code:
+                stat['path_for_other_location_code'] = other_location_code_path_list
+                self.files_not_in_main_sds_but_other_location_code_exists.append(stat)
             else:
                 stat['comment'] = 'Not exit in SDS'
                 self.files_not_in_main_sds.append(stat)  # not in sds
@@ -168,7 +220,7 @@ class SdsFiller(object):
         """
         if self.verbose > 0:
             print('Scan dir: %s' % self.src_source_sds)
-        self.files_in_source_sds = scan_dir(self.src_source_sds, sta = self.station)
+        self.files_in_source_sds = scan_dir(self.src_source_sds, sta = self.station, loc=self.location, year=self.year)
         self._write_report("files_in_source_sds")
         if self.verbose > 0:
             print('%s files scanned' % len(self.files_in_source_sds))
@@ -185,12 +237,13 @@ class SdsFiller(object):
         self._write_report("files_not_in_main_sds")
         self._write_report("files_already_in_main_sds")
         self._write_report("files_in_both_with_diff")
+        self._write_report("files_not_in_main_sds_but_other_location_code_exists")
 
     def copy_list_file_in_sds(self) -> None:
         """
         To copy list file in sds
         """
-        self.files_copied = []
+        #self.files_copied = []
         for st_file in self.files_not_in_main_sds:
             try:
                 dist_path = self._get_file_path_in_main_sds(st_file)
@@ -199,6 +252,9 @@ class SdsFiller(object):
                         print("Create rep : %s" % dist_path[:-len(st_file['name'])])
                     create_dir(dist_path[:-len(st_file['name'])])
                     shutil.copy(st_file['abs_path'], dist_path)
+                    st_file["copied_to"] = dist_path
+                    st_file["comment"] = "File copied in main SDS"
+                    st_file["copy_date"] = datetime.now().strftime("%Y-%m-%dT%H:%M:%S") 
                     self.files_copied.append(st_file)
                     if self.verbose > 0:
                         print("File: %s copied" % st_file['name'])
@@ -237,7 +293,7 @@ class SdsFiller(object):
                     save_path = os.path.join(self.save_merged_file_path, st_file['name'])
                     shutil.move(dist_path, save_path)
                     st_file['merge'] = {'old_file': save_path,
-                                        'merge_time': str(datetime.utcnow()),
+                                        'merge_time': str(datetime.now()),
                                         'after':{'gap': str(gaps),
                                                  'start': str(st[0].stats['starttime']),
                                                  'end': str(st[0].stats['endtime'])},
@@ -256,14 +312,7 @@ class SdsFiller(object):
                         self.files_merged_failed.append(st_file)
                 else:
                     print("Merge failled")
-                    st_file['merge_fail'] = {'fail_time': str(datetime.utcnow()),
-                                         #    'before': {'src': str(mseed_src.get_gaps()),
-                                         #              'start_src': str(mseed_src[0].stats['starttime']),
-                                         #               'end_src': str(mseed_sds[0].stats['starttime']),
-                                         #               'sds': str(mseed_sds.get_gaps()),
-                                         #               'start_sds': str(mseed_sds[0].stats['starttime']),
-                                         #               'end_sds': str(mseed_sds[0].stats['endtime'])
-                                         #               },
+                    st_file['merge_fail'] = {'fail_time': str(datetime.now()),
                                              'len_after_merge' : len(st)}
                     self.files_merged_failed.append(st_file)
             except:
